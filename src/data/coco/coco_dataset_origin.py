@@ -25,11 +25,8 @@ class CocoDetection(torchvision.datasets.CocoDetection):
     __inject__ = ['transforms']
     __share__ = ['remap_mscoco_category']
     
-    def __init__(self, img_folder, ann_file, transforms, return_masks, remap_mscoco_category=False, img_distill_folder=None):
+    def __init__(self, img_folder, ann_file, transforms, return_masks, remap_mscoco_category=False):
         super(CocoDetection, self).__init__(img_folder, ann_file)
-        self.coco_distill = None
-        if img_distill_folder is not None:
-            self.coco_distill = torchvision.datasets.CocoDetection(img_distill_folder, ann_file)
         self._transforms = transforms
         self.prepare = ConvertCocoPolysToMask(return_masks, remap_mscoco_category)
         self.img_folder = img_folder
@@ -37,7 +34,7 @@ class CocoDetection(torchvision.datasets.CocoDetection):
         self.return_masks = return_masks
         self.remap_mscoco_category = remap_mscoco_category
 
-    def __getitem1__(self, idx):
+    def __getitem__(self, idx):
         img, target = super(CocoDetection, self).__getitem__(idx)
         image_id = self.ids[idx]
         target = {'image_id': image_id, 'annotations': target}
@@ -57,36 +54,6 @@ class CocoDetection(torchvision.datasets.CocoDetection):
             img, target = self._transforms(img, target)
             
         return img, target
-    def __getitem2__(self, idx):
-        
-        img, target = self.coco_distill.__getitem__(idx)
-        image_id = self.ids[idx]
-        target = {'image_id': image_id, 'annotations': target}
-        img, target = self.prepare(img, target)
-
-        # ['boxes', 'masks', 'labels']:
-        if 'boxes' in target:
-            target['boxes'] = datapoints.BoundingBox(
-                target['boxes'], 
-                format=datapoints.BoundingBoxFormat.XYXY, 
-                spatial_size=img.size[::-1]) # h w
-
-        if 'masks' in target:
-            target['masks'] = datapoints.Mask(target['masks'])
-
-        if self._transforms is not None:
-            img, target = self._transforms(img, target)
-            
-        return img, target
-    def __getitem__(self, idx):
-        if self.coco_distill is None:
-            return self.__getitem1__(idx)
-        else:
-            img1, target1 = self.__getitem1__(idx)
-            img2, _ = self.__getitem2__(idx)
-            img = torch.cat([img1[None], img2[None]])
-            return img, target1
-
 
     def extra_repr(self) -> str:
         s = f' img_folder: {self.img_folder}\n ann_file: {self.ann_file}\n'
@@ -269,8 +236,3 @@ mscoco_category2name = {
 
 mscoco_category2label = {k: i for i, k in enumerate(mscoco_category2name.keys())}
 mscoco_label2category = {v: k for k, v in mscoco_category2label.items()}
-
-def default_collate_fn(items):
-    '''default collate_fn
-    '''    
-    return torch.cat([x[0][None] for x in items], dim=0), [x[1] for x in items]

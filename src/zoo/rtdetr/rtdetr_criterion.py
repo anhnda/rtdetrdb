@@ -29,7 +29,7 @@ class SetCriterion(nn.Module):
     __share__ = ['num_classes', ]
     __inject__ = ['matcher', ]
 
-    def __init__(self, matcher, weight_dict, losses, alpha=0.2, gamma=2.0, eos_coef=1e-4, num_classes=80):
+    def __init__(self, matcher, weight_dict, losses, alpha=0.2, gamma=2.0, eos_coef=1e-4, distill_lambda=1, num_classes=80):
         """ Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
@@ -47,7 +47,9 @@ class SetCriterion(nn.Module):
         empty_weight = torch.ones(self.num_classes + 1)
         empty_weight[-1] = eos_coef
         self.register_buffer('empty_weight', empty_weight)
-
+    
+        self.loss_distill = torch.nn.MSELoss()
+        self.distill_lambda = distill_lambda
         self.alpha = alpha
         self.gamma = gamma
 
@@ -64,7 +66,7 @@ class SetCriterion(nn.Module):
         target_classes = torch.full(src_logits.shape[:2], self.num_classes,
                                     dtype=torch.int64, device=src_logits.device)
         target_classes[idx] = target_classes_o
-
+      
         loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
         losses = {'loss_ce': loss_ce}
 
@@ -290,6 +292,12 @@ class SetCriterion(nn.Module):
                     l_dict = {k: l_dict[k] * self.weight_dict[k] for k in l_dict if k in self.weight_dict}
                     l_dict = {k + f'_dn_{i}': v for k, v in l_dict.items()}
                     losses.update(l_dict)
+        if 'aux_emb_ori' in outputs:
+            loss_dt = 0
+            for i, emb_ori in enumerate(outputs['aux_emb_ori']):
+                emb_upr = outputs['aux_emb_upr'][i]
+                loss_dt += self.loss_distill(emb_ori, emb_upr)
+            losses['loss_distill'] = self.distill_lambda * loss_dt
 
         return losses
 
