@@ -31,8 +31,12 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     
     ema = kwargs.get('ema', None)
     scaler = kwargs.get('scaler', None)
-
+    ic = -1
+    mx = 1000000000
     for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
+        ic += 1
+        if ic >= mx:
+            break
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -110,7 +114,7 @@ def evaluate(model: torch.nn.Module, criterion: torch.nn.Module, postprocessors,
     #         data_loader.dataset.ann_folder,
     #         output_dir=os.path.join(output_dir, "panoptic_eval"),
     #     )
-    nstep = 10000000
+    nstep = 100000
     ii = -1
     for samples, targets in metric_logger.log_every(data_loader, 10, header):
         samples = samples.to(device)

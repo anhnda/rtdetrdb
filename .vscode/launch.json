@@ -7,14 +7,14 @@
       "request": "launch",
       "python": "/home/anhnda/.conda/envs/rtdert/bin/python",
       "program": "${workspaceFolder}/tools/train.py",
-      "args": [
-        "-c", "configs/rtdetr/rtdetr_r50vd_6x_coco.yml"
-      ],
-      // "args":[
-      //   "-c", "configs/rtdetr/rtdetr_r50vd_6x_coco.yml",
-      //   "-r", "/home/anhnda/RT-DETR/rtdetr_pytorch/scheckpoints/rtdetr_r50vd_2x_coco_objects365_from_paddle.pth",
-      //   "--test-only"
+      // "args": [
+      //   "-c", "configs/rtdetr/rtdetr_r50vd_6x_coco.yml"
       // ],
+      "args":[
+        "-c", "configs/rtdetr/rtdetr_r50vd_6x_coco.yml",
+        "-r", "/home/anhnda/RT-DETR/rtdetr_pytorch/scheckpoints/rtdetr_r50vd_2x_coco_objects365_from_paddle.pth",
+        "--test-only"
+      ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "internalConsoleOptions": "openOnSessionStart",

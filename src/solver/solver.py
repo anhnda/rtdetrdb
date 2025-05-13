@@ -53,6 +53,7 @@ class BaseSolver(object):
 
         self.train_dataloader = dist.warp_loader(self.cfg.train_dataloader, \
             shuffle=self.cfg.train_dataloader.shuffle)
+        
         self.val_dataloader = dist.warp_loader(self.cfg.val_dataloader, \
             shuffle=self.cfg.val_dataloader.shuffle)
 

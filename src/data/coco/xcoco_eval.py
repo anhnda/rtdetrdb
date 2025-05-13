@@ -213,11 +213,17 @@ class XCOCOEval(COCOeval):
                 Na = a0*I0
                 for m, maxDet in enumerate(m_list):
                     E = [self.evalImgs[Nk + Na + i] for i in i_list]
-                    E = [e for e in E if not e is None]
+                    E = [e for e in E if not e is None and len(e['dtScores'])>0]
                     if len(E) == 0:
                         continue
                     dtScores = np.concatenate([e['dtScores'][0:maxDet] for e in E])
                     dtbbox = np.concatenate([e['dtbboxs'][0:maxDet] for e in E])
+                 
+                    # for ii,s in enumerate(ss):
+                    #     if len(s)==0:
+                    #         print(ii, len(s),s, len(ss2[ii]), ss2[ii], len(ss[ii-1]), len(ss2[ii-1]), ss[ii-1], ss2[ii-1])
+                    # print(dtScores.shape, len(ss2))
+                    # dtbbox = np.concatenate(ss)
                     # different sorting method generates slightly different results.
                     # mergesort is used to be consistent as Matlab implementation.
                     inds = np.argsort(-dtScores, kind='mergesort')
@@ -228,7 +234,6 @@ class XCOCOEval(COCOeval):
                     dtIg = np.concatenate([e['dtIgnore'][:,0:maxDet]  for e in E], axis=1)[:,inds]
                     gtIg = np.concatenate([e['gtIgnore'] for e in E])
                     npig = np.count_nonzero(gtIg==0 )
-                    # gtm = np.concatenate([e['gtMatches'] for e in E])
 
                     if npig == 0:
                         continue
@@ -295,7 +300,7 @@ class XCOCOEval(COCOeval):
                     if ann['area'] >= p[0] and ann['area'] <= p[1]:
                         all_annotations_area[ii].append(ann['id'])
         annotation_map = self.cocoGt.anns
-        joblib.dump((img_ids, topk, correct_annotations, all_annotations_area, annotation_map, pred_bboxs, self.cocoGt.imgs,self.cocoGt.imgToAnns), "/home/anhnda/RT-DETR/rtdetr_pytorch/pred_annotation_area.pkl")
+        # joblib.dump((img_ids, topk, correct_annotations, all_annotations_area, annotation_map, pred_bboxs, self.cocoGt.imgs,self.cocoGt.imgToAnns), "/home/anhnda/RT-DETR/rtdetr_pytorch/pred_annotation_area.pkl")
         toc = time.time()
         print('DONE (t={:0.2f}s).'.format( toc-tic))    
     

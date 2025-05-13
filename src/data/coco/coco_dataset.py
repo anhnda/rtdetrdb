@@ -25,11 +25,13 @@ class CocoDetection(torchvision.datasets.CocoDetection):
     __inject__ = ['transforms']
     __share__ = ['remap_mscoco_category']
     
-    def __init__(self, img_folder, ann_file, transforms, return_masks, remap_mscoco_category=False, img_distill_folder=None):
+    def __init__(self, img_folder, ann_file, transforms, return_masks, remap_mscoco_category=False, img_distill_folder=None, ann_distill_file=None):
         super(CocoDetection, self).__init__(img_folder, ann_file)
         self.coco_distill = None
+        print("Dataset Info: ", img_folder, img_distill_folder, ann_file, ann_distill_file)
         if img_distill_folder is not None:
-            self.coco_distill = torchvision.datasets.CocoDetection(img_distill_folder, ann_file)
+            assert ann_distill_file is not None
+            self.coco_distill = torchvision.datasets.CocoDetection(img_distill_folder, ann_distill_file)
         self._transforms = transforms
         self.prepare = ConvertCocoPolysToMask(return_masks, remap_mscoco_category)
         self.img_folder = img_folder
