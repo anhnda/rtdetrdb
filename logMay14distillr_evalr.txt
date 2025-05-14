@@ -1,0 +1,15 @@
+Not init distributed mode.
+Start training
+Load PResNet50 state_dict
+Initial lr:  [1e-05, 0.0001, 0.0001, 0.0001]
+loading annotations into memory...
+Done (t=13.39s)
+creating index...
+index created!
+Dataset Info:  /data/coco/train2017_distillr None /data/coco/annotations/instances_train2017_png.json None
+loading annotations into memory...
+Done (t=2.31s)
+creating index...
+index created!
+Dataset Info:  /data/coco/val2017_distillr/ None /data/coco/annotations/instances_val2017_png.json None
+number of params: 42862860

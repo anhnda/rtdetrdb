@@ -26,6 +26,7 @@ class RTDETR(nn.Module):
         self.multi_scale = multi_scale
         
     def forward(self, x, targets=None):
+        shape = x.shape
         if self.multi_scale and self.training:
             sz = np.random.choice(self.multi_scale)
             shape = x.shape
@@ -36,14 +37,14 @@ class RTDETR(nn.Module):
             if len(shape)==5:
                 ss4 = x.shape
                 x = x.reshape((ss4[0]//2, 2, ss4[1],ss4[2],ss4[3]))
-        if self.training:
+        if self.training and len(shape) == 5:
             x1 = x[:,0,...]
             x2 = x[:,1,...]
             o1 = self.backbone(x1)
             o2 = self.backbone(x2)
             e1 = self.encoder(o1)
             e2 = self.encoder(o2)
-            x = self.decoder(e1,targets)
+            x = self.decoder(e2,targets)
             x['aux_emb_upr'] = e2
             x['aux_emb_ori'] = e1
         else:
