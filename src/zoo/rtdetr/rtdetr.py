@@ -27,7 +27,7 @@ class RTDETR(nn.Module):
         
     def forward(self, x, targets=None):
         shape = x.shape
-        if self.multi_scale and self.training and len(shape)==5:
+        if self.multi_scale and self.training:
             sz = np.random.choice(self.multi_scale)
             shape = x.shape
             if len(shape) == 5:
