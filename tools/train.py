@@ -10,6 +10,8 @@ import src.misc.dist as dist
 from src.core import YAMLConfig 
 from src.solver import TASKS
 
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 
 def main(args, ) -> None:
     '''main

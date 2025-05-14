@@ -1,0 +1,9 @@
+#Train:
+export CUDA_VISIBLE_DEVICES=0
+
+#COCO
+python tools/train.py -c configs/rtdetr/rtdetr_r50vd_6x_coco.yml
+#MTSD
+python tools/train.py -c configs/rtdetr/rtdetr_r50vd_6x_mtsd.yml
+
+

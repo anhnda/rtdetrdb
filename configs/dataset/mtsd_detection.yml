@@ -1,15 +1,15 @@
 task: detection
 
-num_classes: 80
-remap_mscoco_category: True
+num_classes: 401
+remap_mscoco_category: False
 
 train_dataloader: 
   type: DataLoader
   dataset: 
     type: CocoDetection
-    img_folder: /data/coco/train2017/
+    img_folder: /data/mtsd/images_train/
     img_distill_folder: ~ #/data/coco/train2017_distillr
-    ann_file: /data/coco/annotations/instances_train2017.json
+    ann_file: /data/mtsd/annotations/train.json
     ann_distill_file: ~ # //data/coco/annotations/instances_train2017_png.json
     # img_folder: /data/coco/train2017_distillr 
     # img_distill_folder: ~ 
@@ -28,9 +28,9 @@ val_dataloader:
   type: DataLoader
   dataset: 
     type: CocoDetection
-    img_folder: /data/coco/val2017/
+    img_folder: /data/mtsd/images_val/
     img_distill_folder: ~
-    ann_file: /data/coco/annotations/instances_val2017.json
+    ann_file: /data/mtsd/annotations/val.json
     ann_distill_file: ~
     # img_folder: /data/coco/val2017_distillr/
     # img_distill_folder: ~
