@@ -19,13 +19,20 @@ from src.core import register
 
 __all__ = ['CocoDetection']
 
+SIZE = 640
+AREA_SMALL = 32 * 32
+AREA_MEDIUM = 96 * 96
+SIZE_80 = 8
+SIZE_40 = 16
+SIZE_20 = 32
+TOTAL = 8400
 
 @register
 class CocoDetection(torchvision.datasets.CocoDetection):
     __inject__ = ['transforms']
     __share__ = ['remap_mscoco_category']
     
-    def __init__(self, img_folder, ann_file, transforms, return_masks, remap_mscoco_category=False, img_distill_folder=None, ann_distill_file=None):
+    def __init__(self, img_folder, ann_file, transforms, return_masks, remap_mscoco_category=False, img_distill_folder=None, ann_distill_file=None, mask_align = False):
         super(CocoDetection, self).__init__(img_folder, ann_file)
         self.coco_distill = None
         print("Dataset Info: ", img_folder, img_distill_folder, ann_file, ann_distill_file)
@@ -38,6 +45,7 @@ class CocoDetection(torchvision.datasets.CocoDetection):
         self.ann_file = ann_file
         self.return_masks = return_masks
         self.remap_mscoco_category = remap_mscoco_category
+        self.mask_align = mask_align
 
     def __getitem1__(self, idx):
         img, target = super(CocoDetection, self).__getitem__(idx)
@@ -57,12 +65,15 @@ class CocoDetection(torchvision.datasets.CocoDetection):
 
         if self._transforms is not None:
             img, target = self._transforms(img, target)
-            
+
+      
         return img, target
     def __getitem2__(self, idx):
         
         img, target = self.coco_distill.__getitem__(idx)
         image_id = self.ids[idx]
+
+
         target = {'image_id': image_id, 'annotations': target}
         img, target = self.prepare(img, target)
 
@@ -78,7 +89,7 @@ class CocoDetection(torchvision.datasets.CocoDetection):
 
         if self._transforms is not None:
             img, target = self._transforms(img, target)
-            
+          
         return img, target
     def __getitem__(self, idx):
         if self.coco_distill is None:

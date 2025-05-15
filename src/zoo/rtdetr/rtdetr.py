@@ -27,6 +27,7 @@ class RTDETR(nn.Module):
         
     def forward(self, x, targets=None):
         shape = x.shape
+        sz = -1
         if self.multi_scale and self.training:
             sz = np.random.choice(self.multi_scale)
             shape = x.shape
@@ -47,11 +48,12 @@ class RTDETR(nn.Module):
             x = self.decoder(e2,targets)
             x['aux_emb_upr'] = e2
             x['aux_emb_ori'] = e1
+
         else:
             x = self.backbone(x)
             x = self.encoder(x)        
             x = self.decoder(x, targets)
-
+        x['aux_sz'] = sz
         return x
     
     def deploy(self, ):

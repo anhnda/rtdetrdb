@@ -512,7 +512,7 @@ class RTDETRTransformer(nn.Module):
         if denoising_class is not None:
             target = torch.concat([denoising_class, target], 1)
 
-        return target, reference_points_unact.detach(), enc_topk_bboxes, enc_topk_logits, topk_ind
+        return target, reference_points_unact.detach(), enc_topk_bboxes, enc_topk_logits, topk_ind, enc_outputs_class
 
 
     def forward(self, feats, targets=None):
@@ -533,7 +533,7 @@ class RTDETRTransformer(nn.Module):
         else:
             denoising_class, denoising_bbox_unact, attn_mask, dn_meta = None, None, None, None
 
-        target, init_ref_points_unact, enc_topk_bboxes, enc_topk_logits, topk_ind = \
+        target, init_ref_points_unact, enc_topk_bboxes, enc_topk_logits, topk_ind, enc_outputs_class = \
             self._get_decoder_input(memory, spatial_shapes, denoising_class, denoising_bbox_unact)
 
         # decoder
@@ -554,10 +554,12 @@ class RTDETRTransformer(nn.Module):
 
         out = {'pred_logits': out_logits[-1], 'pred_boxes': out_bboxes[-1]}
         out['topk_ind'] = topk_ind
+
         if self.training and self.aux_loss:
             out['aux_outputs'] = self._set_aux_loss(out_logits[:-1], out_bboxes[:-1])
             out['aux_outputs'].extend(self._set_aux_loss([enc_topk_logits], [enc_topk_bboxes]))
-            
+            out['all_enc_outputs_class'] = enc_outputs_class
+            out['spatial_shapes'] = spatial_shapes
             if self.training and dn_meta is not None:
                 out['dn_aux_outputs'] = self._set_aux_loss(dn_out_logits, dn_out_bboxes)
                 out['dn_meta'] = dn_meta

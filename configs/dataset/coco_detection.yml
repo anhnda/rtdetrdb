@@ -11,6 +11,7 @@ train_dataloader:
     img_distill_folder: ~ #/data/coco/train2017_distillr
     ann_file: /data/coco/annotations/instances_train2017.json
     ann_distill_file: ~ # //data/coco/annotations/instances_train2017_png.json
+    mask_align: True
     # img_folder: /data/coco/train2017_distillr 
     # img_distill_folder: ~ 
     # ann_file: /data/coco/annotations/instances_train2017_png.json 
@@ -32,6 +33,7 @@ val_dataloader:
     img_distill_folder: ~
     ann_file: /data/coco/annotations/instances_val2017.json
     ann_distill_file: ~
+    mask_align: False
     # img_folder: /data/coco/val2017_distillr/
     # img_distill_folder: ~
     # ann_file: /data/coco/annotations/instances_val2017_png.json

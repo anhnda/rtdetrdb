@@ -226,6 +226,46 @@ class SetCriterion(nn.Module):
         }
         assert loss in loss_map, f'do you really want to compute {loss} loss?'
         return loss_map[loss](outputs, targets, indices, num_boxes, **kwargs)
+    @torch.no_grad()
+    def creating_mask(self,bboxes, origin_size, areas, sz, out_shapes):
+        bboxs = torchvision.ops.box_convert(bboxes, in_fmt='cxcywh', out_fmt='xyxy')
+        bboxs *= origin_size.repeat(2)
+        s1, s2, s3 = out_shapes[0][0], out_shapes[1][0], out_shapes[2][0]
+        total = s1 * s1 + s2 * s2 + s3 * s3
+        step1, step2, step3 = sz * 1.0 / s1, sz*1.0/s2, sz*1.0/s3
+        mask_all = torch.zeros(total, dtype=int)
+        mask_small = torch.zeros(total, dtype=int)
+        mask_medium = torch.zeros(total, dtype=int)
+        mask_large = torch.zeros(total, dtype=int)
+        SMALL = 32*32
+        MEDIUM = 96*96
+        def get_pos(x,y,x2,y2, step):
+            px, py, px2, py2 = int(x/step), int(y/step), int(x2/step), int(y2/step)
+            if px2 == px:
+                px2 += 1
+            if py2 == py:
+                py2 += 1
+            return px, py, px2, py2
+        def set_mask(mask,pos):
+            ( x1,y1, z1, t1), (x2, y2, z2, t2), (x3, y3, z3, t3) = pos
+            mask[:s1*s1].reshape((s1,s1))[x1:z1,y1:t1]=1
+            mask[s1*s1:s1*s1+s2*s2].reshape((s2,s2))[x2:z2,y2:t2]=1
+            mask[s1*s1+s2*s2:].reshape((s3,s3))[x3:z3,y3:t3] = 1
+            return mask
+        for i, bbox in enumerate(bboxs):
+            x, y, z, t = bbox
+            x1,y1, z1, t1 = get_pos(x,y,z,t,step1)
+            x2, y2, z2, t2 = get_pos(x,y,z,t,step2)
+            x3, y3, z3, t3 = get_pos(x,y,z,t,step3)
+            pos = ( x1,y1, z1, t1), (x2, y2, z2, t2), (x3, y3, z3, t3) 
+            set_mask(mask_all, pos)
+            if areas[i] < SMALL:
+                set_mask(mask_small, pos)
+            elif areas[i] < MEDIUM:
+                set_mask(mask_medium, pos)
+            else:
+                set_mask(mask_large, pos)
+        return torch.vstack((mask_all, mask_small, mask_medium, mask_large))
 
     def forward(self, outputs, targets):
         """ This performs the loss computation.
@@ -234,6 +274,7 @@ class SetCriterion(nn.Module):
              targets: list of dicts, such that len(targets) == batch_size.
                       The expected keys in each dict depends on the losses applied, see each loss' doc
         """
+        
         outputs_without_aux = {k: v for k, v in outputs.items() if 'aux' not in k}
 
         # Retrieve the matching between the outputs of the last layer and the targets
@@ -298,7 +339,14 @@ class SetCriterion(nn.Module):
                 emb_upr = outputs['aux_emb_upr'][i]
                 loss_dt += self.loss_distill(emb_ori, emb_upr)
             losses['loss_distill'] = self.distill_lambda * loss_dt
-
+        if 'all_enc_outputs_class' in outputs:
+            masks = [self.creating_mask(target['boxes'], target['orig_size'], target['area'] ,outputs['aux_sz'], outputs['spatial_shapes'])[None] for target in targets]
+            masks = torch.cat(masks)
+            # Get mask_all
+            masks = masks[:,0,:]
+            max_logits_all_features = torch.max(outputs['all_enc_outputs_class'], dim=-1)[0]
+            masks = masks.to(max_logits_all_features.device).float()
+            losses['loss_align'] = F.binary_cross_entropy_with_logits(max_logits_all_features, masks)
         return losses
 
     @staticmethod
