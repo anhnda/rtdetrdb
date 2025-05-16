@@ -96,7 +96,7 @@ class XCOCOEval(COCOeval):
         Compute and display summary metrics for evaluation results.
         Note this functin can *only* be applied on the default parameter setting
         '''
-        print("Summarizing....")
+        # print("Summarizing....")
         def _summarize( ap=1, iouThr=None, areaRng='all', maxDets=100 ):
             p = self.params
             iStr = ' {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}'

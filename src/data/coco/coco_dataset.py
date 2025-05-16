@@ -19,14 +19,6 @@ from src.core import register
 
 __all__ = ['CocoDetection']
 
-SIZE = 640
-AREA_SMALL = 32 * 32
-AREA_MEDIUM = 96 * 96
-SIZE_80 = 8
-SIZE_40 = 16
-SIZE_20 = 32
-TOTAL = 8400
-
 @register
 class CocoDetection(torchvision.datasets.CocoDetection):
     __inject__ = ['transforms']

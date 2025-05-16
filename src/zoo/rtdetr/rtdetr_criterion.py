@@ -233,10 +233,10 @@ class SetCriterion(nn.Module):
         s1, s2, s3 = out_shapes[0][0], out_shapes[1][0], out_shapes[2][0]
         total = s1 * s1 + s2 * s2 + s3 * s3
         step1, step2, step3 = sz * 1.0 / s1, sz*1.0/s2, sz*1.0/s3
-        mask_all = torch.zeros(total, dtype=int)
-        mask_small = torch.zeros(total, dtype=int)
-        mask_medium = torch.zeros(total, dtype=int)
-        mask_large = torch.zeros(total, dtype=int)
+        mask_all = torch.zeros(total)
+        mask_small = torch.zeros(total)
+        mask_medium = torch.zeros(total)
+        mask_large = torch.zeros(total)
         SMALL = 32*32
         MEDIUM = 96*96
         def get_pos(x,y,x2,y2, step):
@@ -343,7 +343,7 @@ class SetCriterion(nn.Module):
             masks = [self.creating_mask(target['boxes'], target['orig_size'], target['area'] ,outputs['aux_sz'], outputs['spatial_shapes'])[None] for target in targets]
             masks = torch.cat(masks)
             # Get mask_all
-            masks = masks[:,0,:]
+            masks = masks[:,1,:]
             max_logits_all_features = torch.max(outputs['all_enc_outputs_class'], dim=-1)[0]
             masks = masks.to(max_logits_all_features.device).float()
             losses['loss_align'] = F.binary_cross_entropy_with_logits(max_logits_all_features, masks)
