@@ -27,6 +27,7 @@ donwload_url = {
     18: 'https://github.com/lyuwenyu/storage/releases/download/v0.1/ResNet18_vd_pretrained_from_paddle.pth',
     34: 'https://github.com/lyuwenyu/storage/releases/download/v0.1/ResNet34_vd_pretrained_from_paddle.pth',
     50: 'https://github.com/lyuwenyu/storage/releases/download/v0.1/ResNet50_vd_ssld_v2_pretrained_from_paddle.pth',
+    # 50: 'https://github.com/lyuwenyu/storage/releases/download/v0.1/rtdetr_r50vd_1x_objects365_from_paddle.pth',
     101: 'https://github.com/lyuwenyu/storage/releases/download/v0.1/ResNet101_vd_ssld_pretrained_from_paddle.pth',
 }
 
@@ -195,9 +196,12 @@ class PResNet(nn.Module):
 
         if pretrained:
             state = torch.hub.load_state_dict_from_url(donwload_url[depth])
+            # state_dict_clean = self.remove_prefix_from_state_dict(state['ema']['module'], "backbone")
             self.load_state_dict(state)
             print(f'Load PResNet{depth} state_dict')
-            
+    # def remove_prefix_from_state_dict(self, state_dict, prefix):
+    #     return {k[len(prefix):] if k.startswith(prefix) else k: v for k, v in state_dict.items()}
+        
     def _freeze_parameters(self, m: nn.Module):
         for p in m.parameters():
             p.requires_grad = False

@@ -70,6 +70,8 @@ path/to/coco/
 export CUDA_VISIBLE_DEVICES=0
 python tools/train.py -c configs/rtdetr/rtdetr_r50vd_6x_coco.yml
 python tools/train.py -c configs/rtdetr/rtdetr_r50vd_6x_coco.yml -r /home/anhnda/RT-DETR/rtdetr_pytorch/scheckpoints/rtdetr_r50vd_2x_coco_objects365_from_paddle.pth --test-only
+python tools/train.py -c configs/rtdetr/rtdetr_r50vd_6x_coco.yml -r /home/anhnda/RT-DETR/rtdetr_pytorch/scheckpoints/rtdetr_r50vd_6x_coco_from_paddle.pth --test-only
+rtdetr_r50vd_6x_coco_from_paddle.pth
 ```
 
 - Training on Multiple GPUs:
