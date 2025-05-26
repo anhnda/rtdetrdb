@@ -45,14 +45,17 @@ class RTDETR(nn.Module):
             o2 = self.backbone(x2)
             e1 = self.encoder(o1)
             e2 = self.encoder(o2)
+            # Skip targets training:
+            targets = None
             x = self.decoder(e2,targets)
             x['aux_emb_upr'] = e2
             x['aux_emb_ori'] = e1
 
         else:
             x = self.backbone(x)
-            x = self.encoder(x)        
+            x = self.encoder(x)  
             x = self.decoder(x, targets)
+
         x['aux_sz'] = sz
         return x
     

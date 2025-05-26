@@ -125,7 +125,7 @@ def evaluate(model: torch.nn.Module, criterion: torch.nn.Module, postprocessors,
         # with torch.autocast(device_type=str(device)):
         #     outputs = model(samples)
 
-        outputs = model(samples)
+        outputs = model(samples, targets)
 
         # loss_dict = criterion(outputs, targets)
         # weight_dict = criterion.weight_dict

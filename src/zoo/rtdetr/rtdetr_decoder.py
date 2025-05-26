@@ -513,7 +513,165 @@ class RTDETRTransformer(nn.Module):
             target = torch.concat([denoising_class, target], 1)
 
         return target, reference_points_unact.detach(), enc_topk_bboxes, enc_topk_logits, topk_ind, enc_outputs_class
+    @torch.no_grad()
+    def creating_masks(self,bboxs, areas, out_shapes, sz = 640):
+        s1, s2, s3 = out_shapes[0][0], out_shapes[1][0], out_shapes[2][0]
+        total = s1 * s1 + s2 * s2 + s3 * s3
+        step1, step2, step3 = sz * 1.0 / s1, sz*1.0/s2, sz*1.0/s3
+        mask_all = torch.zeros(total)
+        mask_small = torch.zeros(total)
+        mask_medium = torch.zeros(total)
+        mask_large = torch.zeros(total)
+        SMALL = 32*32
+        MEDIUM = 96*96
+        def get_pos(x,y,x2,y2, step):
+            px, py, px2, py2 = int(x/step), int(y/step), int(x2/step), int(y2/step)
+            if px2 == px:
+                px2 += 1
+            if py2 == py:
+                py2 += 1
+            return px, py, px2, py2
+        def set_mask(mask,pos):
+            ( x1,y1, z1, t1), (x2, y2, z2, t2), (x3, y3, z3, t3) = pos
+            mask[:s1*s1].reshape((s1,s1))[x1:z1,y1:t1]=1
+            mask[s1*s1:s1*s1+s2*s2].reshape((s2,s2))[x2:z2,y2:t2]=1
+            mask[s1*s1+s2*s2:].reshape((s3,s3))[x3:z3,y3:t3] = 1
+            return mask
+        for i, bbox in enumerate(bboxs):
+            x, y, z, t = bbox
+            x1,y1, z1, t1 = get_pos(x,y,z,t,step1)
+            x2, y2, z2, t2 = get_pos(x,y,z,t,step2)
+            x3, y3, z3, t3 = get_pos(x,y,z,t,step3)
+            pos = ( x1,y1, z1, t1), (x2, y2, z2, t2), (x3, y3, z3, t3) 
+            set_mask(mask_all, pos)
+            if areas[i] < SMALL:
+                set_mask(mask_small, pos)
+            elif areas[i] < MEDIUM:
+                set_mask(mask_medium, pos)
+            else:
+                set_mask(mask_large, pos)
+        return torch.vstack((mask_all, mask_small, mask_medium, mask_large))
+    @torch.no_grad()
+    def create_mask_object(self, bbox, area, out_shapes, sz=640):
+        s1, s2, s3 = out_shapes[0][0], out_shapes[1][0], out_shapes[2][0]
+        total = s1 * s1 + s2 * s2 + s3 * s3
+        step1, step2, step3 = sz * 1.0 / s1, sz*1.0/s2, sz*1.0/s3
+        assert total == 8400
+        mask = torch.zeros(total)
+        SMALL = 32*32
+        MEDIUM = 96*96
+        def get_pos(x,y,x2,y2, step):
+            px, py, px2, py2 = int(x/step), int(y/step), int(x2/step), int(y2/step)
+            if px2 == px:
+                px2 += 1
+            if py2 == py:
+                py2 += 1
+            return px, py, px2, py2
+        def set_mask(mask,pos):
+            ( x1,y1, z1, t1), (x2, y2, z2, t2), (x3, y3, z3, t3) = pos
+            mask[:s1*s1].reshape((s1,s1))[x1:z1,y1:t1]=1
+            mask[s1*s1:s1*s1+s2*s2].reshape((s2,s2))[x2:z2,y2:t2]=1
+            mask[s1*s1+s2*s2:].reshape((s3,s3))[x3:z3,y3:t3] = 1
+            return mask
 
+        x, y, z, t = bbox
+        x1,y1, z1, t1 = get_pos(x,y,z,t,step1)
+        x2, y2, z2, t2 = get_pos(x,y,z,t,step2)
+        x3, y3, z3, t3 = get_pos(x,y,z,t,step3)
+        pos = ( x1,y1, z1, t1), (x2, y2, z2, t2), (x3, y3, z3, t3) 
+        set_mask(mask, pos)
+        tp = 0
+        if area < SMALL:
+            tp = 0
+        elif area < MEDIUM:
+            tp = 1
+        else:
+            tp = 2
+        return mask, tp
+
+    def _get_decoder_input2(self,
+                            memory,
+                            spatial_shapes,
+                            denoising_class=None,
+                            denoising_bbox_unact=None,
+                            targets=None):
+            if targets is None:
+                return self._get_decoder_input(memory,
+                            spatial_shapes,
+                            denoising_class,
+                            denoising_bbox_unact)
+            bs, _, _ = memory.shape
+            # prepare input for decoder
+            if self.training or self.eval_spatial_size is None:
+                anchors, valid_mask = self._generate_anchors(spatial_shapes, device=memory.device)
+            else:
+                anchors, valid_mask = self.anchors.to(memory.device), self.valid_mask.to(memory.device)
+
+            # memory = torch.where(valid_mask, memory, 0)
+            memory = valid_mask.to(memory.dtype) * memory  # TODO fix type error for onnx export 
+
+            output_memory = self.enc_output(memory)
+
+            enc_outputs_class = self.enc_score_head(output_memory)
+            enc_outputs_coord_unact = self.enc_bbox_head(output_memory) + anchors
+
+            _, topk_ind = torch.topk(enc_outputs_class.max(-1).values, self.num_queries, dim=1)            
+            # print("B: ", torch.sum(topk_ind))
+            # SZ = 10
+            # topk_ind[:,:180] = 0
+            # topk_ind[:,] = 0
+            # for ti, target in enumerate(targets):
+            #     topk = topk_ind[ti]
+            #     if len(target['boxes'] > 20):
+            #         SZ = 5
+            #     else:
+            #         SZ = 10
+            #     ic = 0
+            #     for ii, bbox in enumerate(target['boxes']):
+            #         # if ii == 8:
+            #         #     pass
+                 
+
+            #         area = target['area'][ii]
+            #         mask, _ = self.create_mask_object(bbox,area,spatial_shapes)
+            #         mask = mask.to(topk.device)
+            #         topk[20:] = 1
+            #         continue
+            #         if torch.sum(mask[topk]) == 0:
+            #             non_zero_mask = mask.nonzero().reshape(-1) 
+            #             STEP = min(len(non_zero_mask), SZ)               
+            #             if ic == 0:
+            #                 topk[-STEP:] = 1# non_zero_mask[:STEP]
+            #             else:
+            #                 assert (ic+1) * SZ < 300, (ic, (ic+1) * SZ)
+            #                 topk[-(ic+1)*SZ:-(ic+1)*SZ+STEP] = 1# non_zero_mask[:STEP]
+            #             ic += 1
+            
+            # print("A: ", torch.sum(topk_ind))  
+            # topk_ind = torch.zeros(topk_ind.shape,dtype=topk_ind.dtype).to(topk_ind.device)  
+            reference_points_unact = enc_outputs_coord_unact.gather(dim=1, \
+                index=topk_ind.unsqueeze(-1).repeat(1, 1, enc_outputs_coord_unact.shape[-1]))
+
+            enc_topk_bboxes = F.sigmoid(reference_points_unact)
+            if denoising_bbox_unact is not None:
+                reference_points_unact = torch.concat(
+                    [denoising_bbox_unact, reference_points_unact], 1)
+            
+            enc_topk_logits = enc_outputs_class.gather(dim=1, \
+                index=topk_ind.unsqueeze(-1).repeat(1, 1, enc_outputs_class.shape[-1]))
+
+            # extract region features
+            if self.learnt_init_query:
+                target = self.tgt_embed.weight.unsqueeze(0).tile([bs, 1, 1])
+            else:
+                target = output_memory.gather(dim=1, \
+                    index=topk_ind.unsqueeze(-1).repeat(1, 1, output_memory.shape[-1]))
+                target = target.detach()
+
+            if denoising_class is not None:
+                target = torch.concat([denoising_class, target], 1)
+
+            return target, reference_points_unact.detach(), enc_topk_bboxes, enc_topk_logits, topk_ind, enc_outputs_class
 
     def forward(self, feats, targets=None):
 
@@ -535,6 +693,8 @@ class RTDETRTransformer(nn.Module):
 
         target, init_ref_points_unact, enc_topk_bboxes, enc_topk_logits, topk_ind, enc_outputs_class = \
             self._get_decoder_input(memory, spatial_shapes, denoising_class, denoising_bbox_unact)
+
+
 
         # decoder
         out_bboxes, out_logits = self.decoder(
@@ -558,7 +718,7 @@ class RTDETRTransformer(nn.Module):
         if self.training and self.aux_loss:
             out['aux_outputs'] = self._set_aux_loss(out_logits[:-1], out_bboxes[:-1])
             out['aux_outputs'].extend(self._set_aux_loss([enc_topk_logits], [enc_topk_bboxes]))
-            out['all_enc_outputs_class'] = enc_outputs_class
+            # out['all_enc_outputs_class'] = enc_outputs_class
             out['spatial_shapes'] = spatial_shapes
             if self.training and dn_meta is not None:
                 out['dn_aux_outputs'] = self._set_aux_loss(dn_out_logits, dn_out_bboxes)
