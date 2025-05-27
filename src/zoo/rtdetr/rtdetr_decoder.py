@@ -108,7 +108,7 @@ class MSDeformableAttention(nn.Module):
 
         value = self.value_proj(value)
         if value_mask is not None:
-            value_mask = value_mask.astype(value.dtype).unsqueeze(-1)
+            value_mask = value_mask.to(value.dtype).unsqueeze(-1)
             value *= value_mask
         value = value.reshape(bs, Len_v, self.num_heads, self.head_dim)
 
@@ -196,24 +196,28 @@ class TransformerDecoderLayer(nn.Module):
                 query_pos_embed=None):
         # self attention
         q = k = self.with_pos_embed(tgt, query_pos_embed)
+        ignore_mask = None
+        # SZ = 280
+        # if tgt.shape[1] == 300:
+        #     ignore_mask = torch.zeros((tgt.shape[0], tgt.shape[1]), dtype=torch.bool, device=tgt.device)
+        #     ignore_mask[:,-SZ:] = True
 
-        # if attn_mask is not None:
-        #     attn_mask = torch.where(
-        #         attn_mask.to(torch.bool),
-        #         torch.zeros_like(attn_mask),
-        #         torch.full_like(attn_mask, float('-inf'), dtype=tgt.dtype))
 
-        tgt2, _ = self.self_attn(q, k, value=tgt, attn_mask=attn_mask)
+       
+        tgt2, _ = self.self_attn(q, k, value=tgt, attn_mask=attn_mask, key_padding_mask = ignore_mask)
+        # tgt2[:,-SZ] = 0
         tgt = tgt + self.dropout1(tgt2)
         tgt = self.norm1(tgt)
-
+        # tgt[:, -SZ:] = 0
         # cross attention
         tgt2 = self.cross_attn(\
             self.with_pos_embed(tgt, query_pos_embed), 
             reference_points, 
             memory, 
             memory_spatial_shapes, 
+            #)
             memory_mask)
+        # tgt2[:,-SZ:] = 0
         tgt = tgt + self.dropout2(tgt2)
         tgt = self.norm2(tgt)
 
@@ -221,6 +225,7 @@ class TransformerDecoderLayer(nn.Module):
         tgt2 = self.forward_ffn(tgt)
         tgt = tgt + self.dropout4(tgt2)
         tgt = self.norm3(tgt.clamp(min=-65504, max=65504))
+        # tgt[:, -SZ:] = 0
 
         return tgt
 
